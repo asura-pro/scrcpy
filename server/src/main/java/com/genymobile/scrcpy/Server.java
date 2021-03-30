@@ -129,11 +129,12 @@ public final class Server {
             throw new IllegalArgumentException("Missing client version");
         }
 
+        /* @FIXME
         String clientVersion = args[0];
         if (!clientVersion.equals(BuildConfig.VERSION_NAME)) {
             throw new IllegalArgumentException(
                     "The server version (" + BuildConfig.VERSION_NAME + ") does not match the client " + "(" + clientVersion + ")");
-        }
+        }*/
 
         final int expectedParameters = 15;
         if (args.length != expectedParameters) {
