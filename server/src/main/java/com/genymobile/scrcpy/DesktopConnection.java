@@ -17,7 +17,7 @@ public final class DesktopConnection implements Closeable {
 
     private static final int DEVICE_NAME_FIELD_LENGTH = 64;
 
-    private static final String SOCKET_NAME = "scrcpy";
+    public static String SOCKET_NAME = "scrcpy";
 
     private final LocalSocket videoSocket;
     private final FileDescriptor videoFd;

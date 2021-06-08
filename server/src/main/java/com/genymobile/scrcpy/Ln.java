@@ -8,8 +8,8 @@ import android.util.Log;
  */
 public final class Ln {
 
-    private static final String TAG = "scrcpy";
-    private static final String PREFIX = "[server] ";
+    public static String TAG = "scrcpy";
+    public static String PREFIX = "[server] ";
 
     enum Level {
         DEBUG, INFO, WARN, ERROR
