@@ -7,6 +7,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.os.IBinder;
 import android.view.Surface;
 
@@ -24,24 +25,32 @@ public class ScreenEncoder implements Device.RotationListener {
     private static final int REPEAT_FRAME_DELAY_US = 100_000; // repeat after 100ms
     private static final String KEY_MAX_FPS_TO_ENCODER = "max-fps-to-encoder";
 
+    // Keep the values in descending order
+    private static final int[] MAX_SIZE_FALLBACK = {2560, 1920, 1600, 1280, 1024, 800};
+
     private static final int NO_PTS = -1;
 
     private final AtomicBoolean rotationChanged = new AtomicBoolean();
     private final ByteBuffer headerBuffer = ByteBuffer.allocate(12);
 
-    private String encoderName;
-    private List<CodecOption> codecOptions;
-    private int bitRate;
-    private int maxFps;
-    private boolean sendFrameMeta;
+    private final String encoderName;
+    private final List<CodecOption> codecOptions;
+    private final int bitRate;
+    private final int maxFps;
+    private final boolean sendFrameMeta;
+    private final boolean downsizeOnError;
     private long ptsOrigin;
 
-    public ScreenEncoder(boolean sendFrameMeta, int bitRate, int maxFps, List<CodecOption> codecOptions, String encoderName) {
+    private boolean firstFrameSent;
+
+    public ScreenEncoder(boolean sendFrameMeta, int bitRate, int maxFps, List<CodecOption> codecOptions, String encoderName,
+            boolean downsizeOnError) {
         this.sendFrameMeta = sendFrameMeta;
         this.bitRate = bitRate;
         this.maxFps = maxFps;
         this.codecOptions = codecOptions;
         this.encoderName = encoderName;
+        this.downsizeOnError = downsizeOnError;
     }
 
     @Override
@@ -55,17 +64,13 @@ public class ScreenEncoder implements Device.RotationListener {
 
     public void streamScreen(Device device, FileDescriptor fd) throws IOException {
         Workarounds.prepareMainLooper();
-
-        try {
-            internalStreamScreen(device, fd);
-        } catch (NullPointerException e) {
-            // Retry with workarounds enabled:
-            // <https://github.com/Genymobile/scrcpy/issues/365>
-            // <https://github.com/Genymobile/scrcpy/issues/940>
-            Ln.d("Applying workarounds to avoid NullPointerException");
+        if (Build.BRAND.equalsIgnoreCase("meizu")) {
+            // <https://github.com/Genymobile/scrcpy/issues/240>
+            // <https://github.com/Genymobile/scrcpy/issues/2656>
             Workarounds.fillAppInfo();
-            internalStreamScreen(device, fd);
         }
+
+        internalStreamScreen(device, fd);
     }
 
     private void internalStreamScreen(Device device, FileDescriptor fd) throws IOException {
@@ -94,6 +99,23 @@ public class ScreenEncoder implements Device.RotationListener {
                     alive = encode(codec, fd);
                     // do not call stop() on exception, it would trigger an IllegalStateException
                     codec.stop();
+                } catch (IllegalStateException e) {
+                    Ln.e("Encoding error: " + e.getClass().getName() + ": " + e.getMessage());
+                    if (!downsizeOnError || firstFrameSent) {
+                        // Fail immediately
+                        throw e;
+                    }
+
+                    int newMaxSize = chooseMaxSizeFallback(screenInfo.getVideoSize());
+                    if (newMaxSize == 0) {
+                        // Definitively fail
+                        throw e;
+                    }
+
+                    // Retry with a smaller device size
+                    Ln.i("Retrying with -m" + newMaxSize + "...");
+                    device.setMaxSize(newMaxSize);
+                    alive = true;
                 } finally {
                     destroyDisplay(display);
                     codec.release();
@@ -103,6 +125,18 @@ public class ScreenEncoder implements Device.RotationListener {
         } finally {
             device.setRotationListener(null);
         }
+    }
+
+    private static int chooseMaxSizeFallback(Size failedSize) {
+        int currentMaxSize = Math.max(failedSize.getWidth(), failedSize.getHeight());
+        for (int value : MAX_SIZE_FALLBACK) {
+            if (value < currentMaxSize) {
+                // We found a smaller value to reduce the video size
+                return value;
+            }
+        }
+        // No fallback, fail definitively
+        return 0;
     }
 
     private boolean encode(MediaCodec codec, FileDescriptor fd) throws IOException {
@@ -125,6 +159,10 @@ public class ScreenEncoder implements Device.RotationListener {
                     }
 
                     IO.writeFully(fd, codecBuffer);
+                    if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                        // If this is not a config packet, then it contains a frame
+                        firstFrameSent = true;
+                    }
                 }
             } finally {
                 if (outputBufferId >= 0) {
@@ -225,7 +263,11 @@ public class ScreenEncoder implements Device.RotationListener {
     }
 
     private static IBinder createDisplay() {
-        return SurfaceControl.createDisplay("scrcpy", true);
+        // Since Android 12 (preview), secure displays could not be created with shell permissions anymore.
+        // On Android 12 preview, SDK_INT is still R (not S), but CODENAME is "S".
+        boolean secure = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || (Build.VERSION.SDK_INT == Build.VERSION_CODES.R && !"S"
+                .equals(Build.VERSION.CODENAME));
+        return SurfaceControl.createDisplay("scrcpy", secure);
     }
 
     private static void configure(MediaCodec codec, MediaFormat format) {

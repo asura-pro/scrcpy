@@ -13,8 +13,9 @@ First, you need to install the required packages:
 ```bash
 # for Debian/Ubuntu
 sudo apt install ffmpeg libsdl2-2.0-0 adb wget \
-                 gcc git pkg-config meson ninja-build \
-                 libavcodec-dev libavformat-dev libavutil-dev libsdl2-dev
+                 gcc git pkg-config meson ninja-build libsdl2-dev \
+                 libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev \
+                 libusb-1.0-0 libusb-1.0-0-dev
 ```
 
 Then clone the repo and execute the installation script
@@ -31,6 +32,12 @@ When a new release is out, update the repo and reinstall:
 ```bash
 git pull
 ./install_release.sh
+```
+
+To uninstall:
+
+```bash
+sudo ninja -Cbuild-auto uninstall
 ```
 
 
@@ -82,11 +89,12 @@ Install the required packages from your package manager.
 
 ```bash
 # runtime dependencies
-sudo apt install ffmpeg libsdl2-2.0-0 adb
+sudo apt install ffmpeg libsdl2-2.0-0 adb libusb-1.0-0
 
 # client build dependencies
-sudo apt install gcc git pkg-config meson ninja-build \
-                 libavcodec-dev libavformat-dev libavutil-dev libsdl2-dev
+sudo apt install gcc git pkg-config meson ninja-build libsdl2-dev \
+                 libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev \
+                 libusb-1.0-0-dev
 
 # server build dependencies
 sudo apt install openjdk-11-jdk
@@ -108,7 +116,7 @@ pip3 install meson
 sudo dnf install https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
 
 # client build dependencies
-sudo dnf install SDL2-devel ffms2-devel meson gcc make
+sudo dnf install SDL2-devel ffms2-devel libusb-devel meson gcc make
 
 # server build dependencies
 sudo dnf install java-devel
@@ -198,12 +206,12 @@ brew install pkg-config meson
 ```
 
 Additionally, if you want to build the server, install Java 8 from Caskroom, and
-make it avaliable from the `PATH`:
+make it available from the `PATH`:
 
 ```bash
 brew tap homebrew/cask-versions
-brew cask install adoptopenjdk/openjdk/adoptopenjdk8
-export JAVA_HOME="$(/usr/libexec/java_home --version 1.8)"
+brew install adoptopenjdk/openjdk/adoptopenjdk11
+export JAVA_HOME="$(/usr/libexec/java_home --version 1.11)"
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
@@ -262,10 +270,10 @@ install` must be run as root)._
 
 #### Option 2: Use prebuilt server
 
- - [`scrcpy-server-v1.17`][direct-scrcpy-server]  
-   _(SHA-256: 11b5ad2d1bc9b9730fb7254a78efd71a8ff46b1938ff468e47a21b653a1b6725)_
+ - [`scrcpy-server-v1.22`][direct-scrcpy-server]  
+   _(SHA-256: c05d273eec7533c0e106282e0254cf04e7f5e8f0c2920ca39448865fab2a419b)_
 
-[direct-scrcpy-server]: https://github.com/Genymobile/scrcpy/releases/download/v1.17/scrcpy-server-v1.17
+[direct-scrcpy-server]: https://github.com/Genymobile/scrcpy/releases/download/v1.22/scrcpy-server-v1.22
 
 Download the prebuilt server somewhere, and specify its path during the Meson
 configuration:
@@ -295,11 +303,16 @@ After a successful build, you can install _scrcpy_ on the system:
 sudo ninja -Cx install    # without sudo on Windows
 ```
 
-This installs two files:
+This installs three files:
 
  - `/usr/local/bin/scrcpy`
  - `/usr/local/share/scrcpy/scrcpy-server`
-
-Just remove them to "uninstall" the application.
+ - `/usr/local/share/man/man1/scrcpy.1`
 
 You can then [run](README.md#run) _scrcpy_.
+
+### Uninstall
+
+```bash
+sudo ninja -Cx uninstall  # without sudo on Windows
+```

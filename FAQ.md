@@ -1,5 +1,7 @@
 # Frequently Asked Questions
 
+[Read in another language](#translations)
+
 Here are the common reported problems and their status.
 
 
@@ -10,7 +12,7 @@ Here are the common reported problems and their status.
 
 In that case, it will print this error:
 
->     ERROR: "adb push" returned with value 1
+>     ERROR: "adb get-serialno" returned with value 1
 
 This is typically not a bug in _scrcpy_, but a problem in your environment.
 
@@ -30,28 +32,38 @@ in the release, so it should work out-of-the-box.
 
 ### Device unauthorized
 
-Check [stackoverflow][device-unauthorized].
+
+>     error: device unauthorized.
+>     This adb server's $ADB_VENDOR_KEYS is not set
+>     Try 'adb kill-server' if that seems wrong.
+>     Otherwise check for a confirmation dialog on your device.
+
+When connecting, a popup should open on the device. You must authorize USB
+debugging.
+
+If it does not open, check [stackoverflow][device-unauthorized].
 
 [device-unauthorized]: https://stackoverflow.com/questions/23081263/adb-android-device-unauthorized
 
 
 ### Device not detected
 
->     adb: error: failed to get feature set: no devices/emulators found
+>     error: no devices/emulators found
 
 Check that you correctly enabled [adb debugging][enable-adb].
 
-If your device is not detected, you may need some [drivers] (on Windows).
+If your device is not detected, you may need some [drivers] (on Windows). There is a separate [USB driver for Google devices][google-usb-driver].
 
 [enable-adb]: https://developer.android.com/studio/command-line/adb.html#Enabling
 [drivers]: https://developer.android.com/studio/run/oem-usb.html
+[google-usb-driver]: https://developer.android.com/studio/run/win-usb
 
 
 ### Several devices connected
 
 If several devices are connected, you will encounter this error:
 
->     adb: error: failed to get feature set: more than one device/emulator
+>     error: more than one device/emulator
 
 the identifier of the device you want to mirror must be provided:
 
@@ -59,7 +71,7 @@ the identifier of the device you want to mirror must be provided:
 scrcpy -s 01234567890abcdef
 ```
 
-Note that if your device is connected over TCP/IP, you'll get this message:
+Note that if your device is connected over TCP/IP, you might get this message:
 
 >     adb: error: more than one device/emulator
 >     ERROR: "adb reverse" returned with value 1
@@ -116,13 +128,17 @@ In developer options, enable:
 
 ### Special characters do not work
 
-Injecting text input is [limited to ASCII characters][text-input]. A trick
-allows to also inject some [accented characters][accented-characters], but
-that's all. See [#37].
+The default text injection method is [limited to ASCII characters][text-input].
+A trick allows to also inject some [accented characters][accented-characters],
+but that's all. See [#37].
+
+Since scrcpy v1.20 on Linux, it is possible to simulate a [physical
+keyboard][hid] (HID).
 
 [text-input]: https://github.com/Genymobile/scrcpy/issues?q=is%3Aopen+is%3Aissue+label%3Aunicode
 [accented-characters]: https://blog.rom1v.com/2018/03/introducing-scrcpy/#handle-accented-characters
 [#37]: https://github.com/Genymobile/scrcpy/issues/37
+[hid]: README.md#physical-keyboard-simulation-hid
 
 
 ## Client issues
@@ -150,6 +166,26 @@ You may also need to configure the [scaling behavior]:
 
 [scaling behavior]: https://github.com/Genymobile/scrcpy/issues/40#issuecomment-424466723
 
+
+### Issue with Wayland
+
+By default, SDL uses x11 on Linux. The [video driver] can be changed via the
+`SDL_VIDEODRIVER` environment variable:
+
+[video driver]: https://wiki.libsdl.org/FAQUsingSDL#how_do_i_choose_a_specific_video_driver
+
+```bash
+export SDL_VIDEODRIVER=wayland
+scrcpy
+```
+
+On some distributions (at least Fedora), the package `libdecor` must be
+installed manually.
+
+See issues [#2554] and [#2559].
+
+[#2554]: https://github.com/Genymobile/scrcpy/issues/2554
+[#2559]: https://github.com/Genymobile/scrcpy/issues/2559
 
 
 ### KWin compositor crashes
@@ -193,13 +229,44 @@ scrcpy -m 1024
 scrcpy -m 800
 ```
 
+Since scrcpy v1.22, scrcpy automatically tries again with a lower definition
+before failing. This behavior can be disabled with `--no-downsize-on-error`.
+
 You could also try another [encoder](README.md#encoder).
+
+
+If you encounter this exception on Android 12, then just upgrade to scrcpy >=
+1.18 (see [#2129]):
+
+```
+> ERROR: Exception on thread Thread[main,5,main]
+java.lang.AssertionError: java.lang.reflect.InvocationTargetException
+    at com.genymobile.scrcpy.wrappers.SurfaceControl.setDisplaySurface(SurfaceControl.java:75)
+    ...
+Caused by: java.lang.reflect.InvocationTargetException
+    at java.lang.reflect.Method.invoke(Native Method)
+    at com.genymobile.scrcpy.wrappers.SurfaceControl.setDisplaySurface(SurfaceControl.java:73)
+    ... 7 more
+Caused by: java.lang.IllegalArgumentException: displayToken must not be null
+    at android.view.SurfaceControl$Transaction.setDisplaySurface(SurfaceControl.java:3067)
+    at android.view.SurfaceControl.setDisplaySurface(SurfaceControl.java:2147)
+    ... 9 more
+```
+
+[#2129]: https://github.com/Genymobile/scrcpy/issues/2129
 
 
 ## Command line on Windows
 
-Some Windows users are not familiar with the command line. Here is how to open a
-terminal and run `scrcpy` with arguments:
+Since v1.22, a "shortcut" has been added to directly open a terminal in the
+scrcpy directory. Double-click on `open_a_terminal_here.bat`, then type your
+command. For example:
+
+```
+scrcpy --record file.mkv
+```
+
+You could also open a terminal and go to the scrcpy folder manually:
 
  1. Press <kbd>Windows</kbd>+<kbd>r</kbd>, this opens a dialog box.
  2. Type `cmd` and press <kbd>Enter</kbd>, this opens a terminal.
@@ -230,3 +297,12 @@ You could also edit (a copy of) `scrcpy-console.bat` or `scrcpy-noconsole.vbs`
 to add some arguments.
 
 [show file extensions]: https://www.howtogeek.com/205086/beginner-how-to-make-windows-show-file-extensions/
+
+
+## Translations
+
+This FAQ is available in other languages:
+
+ - [Italiano (Italiano, `it`) - v1.19](FAQ.it.md)
+ - [한국어 (Korean, `ko`) - v1.11](FAQ.ko.md)
+ - [简体中文 (Simplified Chinese, `zh-Hans`) - v1.22](FAQ.zh-Hans.md)
