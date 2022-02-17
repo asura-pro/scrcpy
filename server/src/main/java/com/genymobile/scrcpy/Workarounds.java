@@ -26,7 +26,11 @@ public final class Workarounds {
         //   "Attempt to read from field 'android.os.MessageQueue android.os.Looper.mQueue'
         //    on a null object reference"
         // <https://github.com/Genymobile/scrcpy/issues/921>
-        Looper.prepareMainLooper();
+        try {
+            Looper.prepareMainLooper();
+        } catch (IllegalStateException e) {
+            // 进程内重启时避免错误: The main Looper has already been prepared 
+        }
     }
 
     @SuppressLint("PrivateApi,DiscouragedPrivateApi")
