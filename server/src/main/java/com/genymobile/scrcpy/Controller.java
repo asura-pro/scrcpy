@@ -78,8 +78,7 @@ public class Controller {
         return sender;
     }
 
-    private void handleEvent() throws IOException {
-        ControlMessage msg = connection.receiveControlMessage();
+    public void handleEvent(ControlMessage msg) {
         switch (msg.getType()) {
             case ControlMessage.TYPE_INJECT_KEYCODE:
                 if (device.supportsInputEvents()) {
@@ -137,6 +136,11 @@ public class Controller {
             default:
                 // do nothing
         }
+    }
+
+    private void handleEvent() throws IOException {
+        ControlMessage msg = connection.receiveControlMessage();
+        handleEvent(msg);
     }
 
     private boolean injectKeycode(int action, int keycode, int repeat, int metaState) {
